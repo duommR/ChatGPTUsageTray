@@ -1,0 +1,12 @@
+{
+  "mode": "codex",
+  "used": 32,
+  "limit": 100,
+  "unit": "%",
+  "expiresAt": "2026-08-29T00:00:00+08:00",
+  "monthlyBudget": 20,
+  "fontColor": "#FFFFFF",
+  "backgroundOpacity": 90,
+  "alwaysOnTop": true,
+  "displayStyle": "detail"
+}
