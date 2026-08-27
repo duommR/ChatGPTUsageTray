@@ -2,6 +2,20 @@
 
 Windows 桌面悬浮组件，每 30 秒通过后台 `cmd` 命令调用本机 `codex app-server`，读取当前 Codex/ChatGPT 登录用户的用量百分比和重置日期。网络不通、未登录、未安装 Codex 或请求超时时显示 `-`。
 
+## 界面预览
+
+### 双周期进度卡片
+
+![双周期进度卡片](assets/screenshots/detail-card.png)
+
+### 汽车双仪表
+
+![汽车双仪表](assets/screenshots/dual-gauges.png)
+
+### 贴边双进度条
+
+![贴边双进度条](assets/screenshots/edge-bars.png)
+
 组件尺寸为 175×190，额外高度用于容纳双仪表刻度、重置时间和按钮。
 
 ## 最新额度展示
