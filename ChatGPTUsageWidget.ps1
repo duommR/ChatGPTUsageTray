@@ -53,22 +53,22 @@ function Get-Usage {
 }
 
 [xml]$xaml=@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Width="175" Height="170" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Width="175" Height="190" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize">
  <Grid>
   <Border Name="CardBackground" CornerRadius="12" Background="#16191F" Opacity="0.9"/>
   <Grid Name="DetailView" Margin="12,9,12,9">
-   <Grid.RowDefinitions><RowDefinition Height="23"/><RowDefinition Height="20"/><RowDefinition Height="8"/><RowDefinition Height="20"/><RowDefinition Height="8"/><RowDefinition Height="34"/><RowDefinition Height="22"/><RowDefinition Height="17"/></Grid.RowDefinitions>
+   <Grid.RowDefinitions><RowDefinition Height="25"/><RowDefinition Height="22"/><RowDefinition Height="9"/><RowDefinition Height="22"/><RowDefinition Height="9"/><RowDefinition Height="38"/><RowDefinition Height="24"/><RowDefinition Height="19"/></Grid.RowDefinitions>
    <Grid Grid.Row="0"><TextBlock Name="Title" HorizontalAlignment="Left" FontFamily="Microsoft YaHei UI" FontWeight="Bold" FontSize="12" Foreground="White"/><TextBlock Name="User" HorizontalAlignment="Right" VerticalAlignment="Center" MaxWidth="75" TextTrimming="CharacterEllipsis" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="White"/></Grid>
    <TextBlock Name="PrimaryLabel" Grid.Row="1" FontFamily="Microsoft YaHei UI" FontWeight="Bold" FontSize="11" Foreground="White" VerticalAlignment="Center"/>
    <Border Grid.Row="2" Background="#59606E" CornerRadius="3"><Border Name="PrimaryBar" Background="#32EB87" CornerRadius="3" HorizontalAlignment="Left"/></Border>
    <TextBlock Name="SecondaryLabel" Grid.Row="3" FontFamily="Microsoft YaHei UI" FontWeight="Bold" FontSize="11" Foreground="White" VerticalAlignment="Center"/>
    <Border Grid.Row="4" Background="#59606E" CornerRadius="3"><Border Name="SecondaryBar" Background="#32EB87" CornerRadius="3" HorizontalAlignment="Left"/></Border>
    <TextBlock Name="ResetInfo" Grid.Row="5" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="#E0E4EA" VerticalAlignment="Center" TextWrapping="Wrap"/>
-   <Grid Grid.Row="6"><TextBlock Name="ResetCredits" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="White"/><Button Name="OpenUsageButton" HorizontalAlignment="Right" Width="42" Height="19" Padding="2,0" FontFamily="Microsoft YaHei UI" FontSize="9" FontWeight="SemiBold" Foreground="White" Background="#2F80ED" BorderThickness="0" Content="Reset" Cursor="Hand"><Button.Template><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Button.Template></Button></Grid>
+   <Grid Grid.Row="6"><TextBlock Name="ResetCredits" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="White"/><Button Name="OpenUsageButton" HorizontalAlignment="Right" Width="42" Height="19" Padding="2,0" FontFamily="Microsoft YaHei UI" FontSize="9" FontWeight="SemiBold" Foreground="White" Background="#2F80ED" BorderThickness="0" Content="Reset" Cursor="Hand" RenderTransformOrigin="0.5,0.5"><Button.RenderTransform><ScaleTransform ScaleX="1" ScaleY="1"/></Button.RenderTransform><Button.Triggers><EventTrigger RoutedEvent="Button.Click"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="0.84" Duration="0:0:0.09" AutoReverse="True"/><DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="0.84" Duration="0:0:0.09" AutoReverse="True"/><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.55" Duration="0:0:0.09" AutoReverse="True"/></Storyboard></BeginStoryboard></EventTrigger></Button.Triggers><Button.Template><ControlTemplate TargetType="Button"><Border Name="ButtonSurface" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonSurface" Property="Background" Value="#56A0FF"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonSurface" Property="Background" Value="#1D64C8"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template></Button></Grid>
    <TextBlock Name="Updated" Grid.Row="7" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="#B8C0CC" VerticalAlignment="Center"/>
   </Grid>
   <Grid Name="RingView" Margin="6" Visibility="Collapsed">
-   <Grid.RowDefinitions><RowDefinition Height="22"/><RowDefinition Height="94"/><RowDefinition Height="28"/><RowDefinition Height="14"/></Grid.RowDefinitions>
+   <Grid.RowDefinitions><RowDefinition Height="24"/><RowDefinition Height="102"/><RowDefinition Height="34"/><RowDefinition Height="18"/></Grid.RowDefinitions>
    <Grid Grid.Row="0"><TextBlock Name="RingTitle" HorizontalAlignment="Left" FontFamily="Microsoft YaHei UI" FontWeight="Bold" FontSize="11" Foreground="White"/><TextBlock Name="RingUser" HorizontalAlignment="Right" MaxWidth="75" TextTrimming="CharacterEllipsis" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White"/></Grid>
    <Grid Grid.Row="1">
     <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
@@ -86,7 +86,7 @@ function Get-Usage {
     </Grid>
    </Grid>
    <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Name="RingPrimaryReset" Grid.Column="0" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White" TextWrapping="Wrap"/><TextBlock Name="RingSecondaryReset" Grid.Column="1" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White" TextWrapping="Wrap"/></Grid>
-   <Grid Grid.Row="3"><TextBlock Name="RingUpdated" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White"/><Button Name="RingResetButton" HorizontalAlignment="Right" Width="40" Height="16" Padding="2,0" FontFamily="Microsoft YaHei UI" FontSize="8" FontWeight="SemiBold" Foreground="White" Background="#2F80ED" BorderThickness="0" Content="Reset" Cursor="Hand"><Button.Template><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Button.Template></Button></Grid>
+   <Grid Grid.Row="3"><TextBlock Name="RingUpdated" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White"/><Button Name="RingResetButton" HorizontalAlignment="Right" Width="40" Height="16" Padding="2,0" FontFamily="Microsoft YaHei UI" FontSize="8" FontWeight="SemiBold" Foreground="White" Background="#2F80ED" BorderThickness="0" Content="Reset" Cursor="Hand" RenderTransformOrigin="0.5,0.5"><Button.RenderTransform><ScaleTransform ScaleX="1" ScaleY="1"/></Button.RenderTransform><Button.Triggers><EventTrigger RoutedEvent="Button.Click"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="0.84" Duration="0:0:0.09" AutoReverse="True"/><DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="0.84" Duration="0:0:0.09" AutoReverse="True"/><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.55" Duration="0:0:0.09" AutoReverse="True"/></Storyboard></BeginStoryboard></EventTrigger></Button.Triggers><Button.Template><ControlTemplate TargetType="Button"><Border Name="ButtonSurface" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonSurface" Property="Background" Value="#56A0FF"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonSurface" Property="Background" Value="#1D64C8"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template></Button></Grid>
   </Grid>
   <Grid Name="EdgeView" Margin="2,10" Visibility="Collapsed">
    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="2"/><ColumnDefinition/></Grid.ColumnDefinitions>
@@ -169,8 +169,8 @@ function Update-Widget {
   $ringPrimaryPercent.Text="$($u.primary.remaining)%";$ringPrimaryPercent.Foreground=$primaryColor;$ringPrimaryName.Text=$primaryName;$ringPrimaryReset.Text=(T '6YeN572u')+"`n"+$reset1;Set-GaugeProgress $ringPrimaryArc $primaryNeedle $u.primary.remaining $primaryColor
   if($u.secondary){$ringSecondaryPercent.Text="$($u.secondary.remaining)%";$ringSecondaryPercent.Foreground=$secondaryColor;$ringSecondaryName.Text=$secondaryName;$ringSecondaryReset.Text=(T '6YeN572u')+"`n"+$reset2;Set-GaugeProgress $ringSecondaryArc $secondaryNeedle $u.secondary.remaining $secondaryColor}else{$ringSecondaryPercent.Text='-';$ringSecondaryName.Text=(T '6ZW/5ZGo5pyf');$ringSecondaryReset.Text=(T '6YeN572u')+': -'}
   $color=if($remain -le 5){'#FF3737'}elseif($remain -le 20){'#FFD22D'}else{'#32EB87'}
-  $edgePrimaryFill.Height=150*$u.primary.remaining/100;$edgePrimaryFill.Background=$primaryColor
-  if($u.secondary){$edgeSecondaryFill.Height=150*$u.secondary.remaining/100;$edgeSecondaryFill.Background=$secondaryColor}else{$edgeSecondaryFill.Height=0}
+  $edgePrimaryFill.Height=170*$u.primary.remaining/100;$edgePrimaryFill.Background=$primaryColor
+  if($u.secondary){$edgeSecondaryFill.Height=170*$u.secondary.remaining/100;$edgeSecondaryFill.Background=$secondaryColor}else{$edgeSecondaryFill.Height=0}
   $ringUpdated.Text=(T '5pu05paw5pe26Ze0')+': '+(Get-Date).ToString('HH:mm:ss')
   $script:hasUsageData=$true;if($timer){$timer.Interval=[TimeSpan]::FromMinutes(1)}
  }catch{
@@ -189,8 +189,13 @@ $refresh.Add_Click({Update-Widget});$top.Add_Click({$window.Topmost=$top.IsCheck
 $image.Add_Click({$d=New-Object Windows.Forms.OpenFileDialog;$d.Filter='Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif';if($d.ShowDialog()-eq'OK'){Save-Setting 'backgroundImage' $d.FileName;Apply-Background $d.FileName};$d.Dispose()})
 $clear.Add_Click({Save-Setting 'backgroundImage' '';Apply-Background ''})
 $fontColorItem.Add_Click({$d=New-Object Windows.Forms.ColorDialog;$d.FullOpen=$true;if($d.ShowDialog()-eq'OK'){$hex='#{0:X2}{1:X2}{2:X2}' -f $d.Color.R,$d.Color.G,$d.Color.B;Save-Setting 'fontColor' $hex;Apply-FontColor $hex};$d.Dispose()})
-$openUsageButton.Add_Click({Start-Process 'https://chatgpt.com/codex/settings/usage'})
-$ringResetButton.Add_Click({Start-Process 'https://chatgpt.com/codex/settings/usage'})
+$script:navigationTimers=New-Object Collections.ArrayList
+function Open-UsagePageAfterFeedback {
+ $navigationTimer=New-Object Windows.Threading.DispatcherTimer;$navigationTimer.Interval=[TimeSpan]::FromMilliseconds(220);[void]$script:navigationTimers.Add($navigationTimer)
+ $navigationTimer.Add_Tick({$this.Stop();[void]$script:navigationTimers.Remove($this);Start-Process 'https://chatgpt.com/codex/settings/usage'});$navigationTimer.Start()
+}
+$openUsageButton.Add_Click({Open-UsagePageAfterFeedback})
+$ringResetButton.Add_Click({Open-UsagePageAfterFeedback})
 $edgeReturnTimer=New-Object Windows.Threading.DispatcherTimer;$edgeReturnTimer.Interval=[TimeSpan]::FromSeconds(5);$edgeReturnTimer.Add_Tick({$edgeReturnTimer.Stop();if(-not $script:isEdgeHidden){Collapse-ToEdge $script:edgeSide}})
 $window.ContextMenu=$menu;$window.Add_MouseLeftButtonDown({
  $wasTemporary=$script:temporaryExpanded;if($wasTemporary){$edgeReturnTimer.Stop()}
