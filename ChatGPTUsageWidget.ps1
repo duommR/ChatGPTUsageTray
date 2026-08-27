@@ -36,14 +36,20 @@ function Get-CodexRateLimits {
   $p.StandardInput.WriteLine('{"method":"initialized"}');$p.StandardInput.WriteLine('{"id":2,"method":"account/read","params":{"refreshToken":false}}');$p.StandardInput.WriteLine('{"id":3,"method":"account/rateLimits/read","params":null}');$p.StandardInput.Flush()
   $end=(Get-Date).AddSeconds(10)
   $username='-'
-  while((Get-Date) -lt $end){$r=$p.StandardOutput.ReadLineAsync();$ms=[Math]::Max(1,[int](($end-(Get-Date)).TotalMilliseconds));if(-not $r.Wait($ms)){throw 'timeout'};$line=$r.Result;if(-not $line){break};$m=$line|ConvertFrom-Json;if($m.id -eq 2 -and $m.result.account.email){$username=([string]$m.result.account.email).Split('@')[0]};if($m.id -eq 3){if($m.error){throw $m.error.message};return @{rateLimits=$m.result.rateLimits;username=$username}}}
+  while((Get-Date) -lt $end){$r=$p.StandardOutput.ReadLineAsync();$ms=[Math]::Max(1,[int](($end-(Get-Date)).TotalMilliseconds));if(-not $r.Wait($ms)){throw 'timeout'};$line=$r.Result;if(-not $line){break};$m=$line|ConvertFrom-Json;if($m.id -eq 2 -and $m.result.account.email){$username=([string]$m.result.account.email).Split('@')[0]};if($m.id -eq 3){if($m.error){throw $m.error.message};return @{rateLimits=$m.result.rateLimits;rateLimitsByLimitId=$m.result.rateLimitsByLimitId;resetCredits=$m.result.rateLimitResetCredits;username=$username}}}
   throw 'no data'
  } finally {if($p -and -not $p.HasExited){$p.Kill()};if($p){$p.Dispose()}}
 }
+function Convert-Window($window) {
+ if(-not $window){return $null}
+ $reset=if($window.resetsAt){[DateTimeOffset]::FromUnixTimeSeconds([long]$window.resetsAt).LocalDateTime}else{$null}
+ @{used=[int]$window.usedPercent;remaining=(100-[int]$window.usedPercent);reset=$reset;minutes=[long]$window.windowDurationMins}
+}
 function Get-Usage {
- $data=Get-CodexRateLimits;$l=$data.rateLimits;$w=$l.primary;if(-not $w){throw 'no limit'}
- $reset=if($w.resetsAt){[DateTimeOffset]::FromUnixTimeSeconds([long]$w.resetsAt).LocalDateTime}else{$null}
- @{used=[int]$w.usedPercent;expires=$reset;username=$data.username}
+ $data=Get-CodexRateLimits;$l=$data.rateLimits;if($data.rateLimitsByLimitId -and $data.rateLimitsByLimitId.codex){$l=$data.rateLimitsByLimitId.codex}
+ $primary=Convert-Window $l.primary;if(-not $primary){throw 'no limit'};$secondary=Convert-Window $l.secondary
+ $tightest=$primary;if($secondary -and $secondary.remaining -lt $primary.remaining){$tightest=$secondary}
+ @{primary=$primary;secondary=$secondary;tightest=$tightest;username=$data.username;plan=$l.planType;resetCredits=if($data.resetCredits){[int]$data.resetCredits.availableCount}else{0}}
 }
 
 [xml]$xaml=@'
@@ -51,40 +57,63 @@ function Get-Usage {
  <Grid>
   <Border Name="CardBackground" CornerRadius="12" Background="#16191F" Opacity="0.9"/>
   <Grid Name="DetailView" Margin="12,9,12,9">
-   <Grid.RowDefinitions><RowDefinition Height="25"/><RowDefinition Height="48"/><RowDefinition Height="10"/><RowDefinition Height="24"/><RowDefinition Height="22"/><RowDefinition Height="20"/></Grid.RowDefinitions>
+   <Grid.RowDefinitions><RowDefinition Height="23"/><RowDefinition Height="20"/><RowDefinition Height="8"/><RowDefinition Height="20"/><RowDefinition Height="8"/><RowDefinition Height="34"/><RowDefinition Height="22"/><RowDefinition Height="17"/></Grid.RowDefinitions>
    <Grid Grid.Row="0"><TextBlock Name="Title" HorizontalAlignment="Left" FontFamily="Microsoft YaHei UI" FontWeight="Bold" FontSize="12" Foreground="White"/><TextBlock Name="User" HorizontalAlignment="Right" VerticalAlignment="Center" MaxWidth="75" TextTrimming="CharacterEllipsis" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="White"/></Grid>
-   <TextBlock Name="Percent" Grid.Row="1" FontFamily="Segoe UI" FontWeight="Bold" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-   <Border Grid.Row="2" Background="#59606E" CornerRadius="3"><Border Name="Bar" Background="#32EB87" CornerRadius="3" HorizontalAlignment="Left"/></Border>
-   <TextBlock Name="Usage" Grid.Row="3" FontFamily="Microsoft YaHei UI" FontSize="11" Foreground="White" VerticalAlignment="Center"/>
-   <TextBlock Name="Expiry" Grid.Row="4" FontFamily="Microsoft YaHei UI" FontSize="10" Foreground="#E0E4EA" VerticalAlignment="Center"/>
-   <TextBlock Name="Updated" Grid.Row="5" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="#B8C0CC" VerticalAlignment="Center"/>
+   <TextBlock Name="PrimaryLabel" Grid.Row="1" FontFamily="Microsoft YaHei UI" FontWeight="Bold" FontSize="11" Foreground="White" VerticalAlignment="Center"/>
+   <Border Grid.Row="2" Background="#59606E" CornerRadius="3"><Border Name="PrimaryBar" Background="#32EB87" CornerRadius="3" HorizontalAlignment="Left"/></Border>
+   <TextBlock Name="SecondaryLabel" Grid.Row="3" FontFamily="Microsoft YaHei UI" FontWeight="Bold" FontSize="11" Foreground="White" VerticalAlignment="Center"/>
+   <Border Grid.Row="4" Background="#59606E" CornerRadius="3"><Border Name="SecondaryBar" Background="#32EB87" CornerRadius="3" HorizontalAlignment="Left"/></Border>
+   <TextBlock Name="ResetInfo" Grid.Row="5" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="#E0E4EA" VerticalAlignment="Center" TextWrapping="Wrap"/>
+   <Grid Grid.Row="6"><TextBlock Name="ResetCredits" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="White"/><Button Name="OpenUsageButton" HorizontalAlignment="Right" Width="42" Height="19" Padding="2,0" FontFamily="Microsoft YaHei UI" FontSize="9" FontWeight="SemiBold" Foreground="White" Background="#2F80ED" BorderThickness="0" Content="Reset" Cursor="Hand"><Button.Template><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Button.Template></Button></Grid>
+   <TextBlock Name="Updated" Grid.Row="7" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="#B8C0CC" VerticalAlignment="Center"/>
   </Grid>
-  <Grid Name="RingView" Margin="5" Visibility="Collapsed">
-   <Ellipse Width="148" Height="148" Stroke="#59606E" StrokeThickness="8"/>
-   <Ellipse Name="RingArc" Width="148" Height="148" Stroke="#32EB87" StrokeThickness="8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" RenderTransformOrigin="0.5,0.5"><Ellipse.RenderTransform><RotateTransform Angle="-90"/></Ellipse.RenderTransform></Ellipse>
-   <StackPanel Width="120" HorizontalAlignment="Center" VerticalAlignment="Center">
-    <TextBlock Name="RingTitle" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontWeight="Bold" FontSize="11" Foreground="White"/>
-    <TextBlock Name="RingUser" TextAlignment="Center" TextTrimming="CharacterEllipsis" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White"/>
-    <TextBlock Name="RingPercent" TextAlignment="Center" FontFamily="Segoe UI" FontWeight="Bold" FontSize="25" Foreground="#32EB87"/>
-    <TextBlock Name="RingUsage" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="White"/>
-    <TextBlock Name="RingExpiry" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White"/>
-    <TextBlock Name="RingUpdated" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White"/>
-   </StackPanel>
+  <Grid Name="RingView" Margin="6" Visibility="Collapsed">
+   <Grid.RowDefinitions><RowDefinition Height="22"/><RowDefinition Height="94"/><RowDefinition Height="28"/><RowDefinition Height="14"/></Grid.RowDefinitions>
+   <Grid Grid.Row="0"><TextBlock Name="RingTitle" HorizontalAlignment="Left" FontFamily="Microsoft YaHei UI" FontWeight="Bold" FontSize="11" Foreground="White"/><TextBlock Name="RingUser" HorizontalAlignment="Right" MaxWidth="75" TextTrimming="CharacterEllipsis" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White"/></Grid>
+   <Grid Grid.Row="1">
+    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+    <Grid Grid.Column="0">
+     <Ellipse Width="76" Height="76" Stroke="#59606E" StrokeThickness="6" StrokeDashArray="27.49,9.16" StrokeStartLineCap="Round" StrokeEndLineCap="Round" RenderTransformOrigin="0.5,0.5"><Ellipse.RenderTransform><RotateTransform Angle="-135"/></Ellipse.RenderTransform></Ellipse>
+     <Ellipse Name="RingPrimaryArc" Width="76" Height="76" Stroke="#32EB87" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" RenderTransformOrigin="0.5,0.5"><Ellipse.RenderTransform><RotateTransform Angle="-135"/></Ellipse.RenderTransform></Ellipse>
+     <Canvas Name="PrimaryGaugeCanvas" Width="76" Height="76" IsHitTestVisible="False"><Line Name="PrimaryNeedle" X1="38" Y1="38" X2="65" Y2="38" Stroke="#22D3EE" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/><Ellipse Width="7" Height="7" Fill="#F8FAFC" Canvas.Left="34.5" Canvas.Top="34.5"/></Canvas>
+     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock Name="RingPrimaryPercent" TextAlignment="Center" FontFamily="Segoe UI" FontWeight="Bold" FontSize="20" Foreground="#32EB87"/><TextBlock Name="RingPrimaryName" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="White"/></StackPanel>
+    </Grid>
+    <Grid Grid.Column="1">
+     <Ellipse Width="76" Height="76" Stroke="#59606E" StrokeThickness="6" StrokeDashArray="27.49,9.16" StrokeStartLineCap="Round" StrokeEndLineCap="Round" RenderTransformOrigin="0.5,0.5"><Ellipse.RenderTransform><RotateTransform Angle="-135"/></Ellipse.RenderTransform></Ellipse>
+     <Ellipse Name="RingSecondaryArc" Width="76" Height="76" Stroke="#32EB87" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" RenderTransformOrigin="0.5,0.5"><Ellipse.RenderTransform><RotateTransform Angle="-135"/></Ellipse.RenderTransform></Ellipse>
+     <Canvas Name="SecondaryGaugeCanvas" Width="76" Height="76" IsHitTestVisible="False"><Line Name="SecondaryNeedle" X1="38" Y1="38" X2="65" Y2="38" Stroke="#32EB87" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/><Ellipse Width="7" Height="7" Fill="#F8FAFC" Canvas.Left="34.5" Canvas.Top="34.5"/></Canvas>
+     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock Name="RingSecondaryPercent" TextAlignment="Center" FontFamily="Segoe UI" FontWeight="Bold" FontSize="20" Foreground="#32EB87"/><TextBlock Name="RingSecondaryName" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="9" Foreground="White"/></StackPanel>
+    </Grid>
+   </Grid>
+   <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Name="RingPrimaryReset" Grid.Column="0" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White" TextWrapping="Wrap"/><TextBlock Name="RingSecondaryReset" Grid.Column="1" TextAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White" TextWrapping="Wrap"/></Grid>
+   <Grid Grid.Row="3"><TextBlock Name="RingUpdated" HorizontalAlignment="Left" VerticalAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="8" Foreground="White"/><Button Name="RingResetButton" HorizontalAlignment="Right" Width="40" Height="16" Padding="2,0" FontFamily="Microsoft YaHei UI" FontSize="8" FontWeight="SemiBold" Foreground="White" Background="#2F80ED" BorderThickness="0" Content="Reset" Cursor="Hand"><Button.Template><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Button.Template></Button></Grid>
   </Grid>
   <Grid Name="EdgeView" Margin="2,10" Visibility="Collapsed">
-   <Border Background="#59606E" CornerRadius="4">
-    <Border Name="EdgeFill" Background="#32EB87" CornerRadius="4" VerticalAlignment="Bottom"/>
-   </Border>
+   <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="2"/><ColumnDefinition/></Grid.ColumnDefinitions>
+   <Border Grid.Column="0" Background="#59606E" CornerRadius="3"><Border Name="EdgePrimaryFill" Background="#22D3EE" CornerRadius="3" VerticalAlignment="Bottom"/></Border>
+   <Border Grid.Column="2" Background="#59606E" CornerRadius="3"><Border Name="EdgeSecondaryFill" Background="#32EB87" CornerRadius="3" VerticalAlignment="Bottom"/></Border>
   </Grid>
  </Grid>
 </Window>
 '@
 $reader=New-Object Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-$bg=$window.FindName('CardBackground');$detailView=$window.FindName('DetailView');$ringView=$window.FindName('RingView');$edgeView=$window.FindName('EdgeView');$edgeFill=$window.FindName('EdgeFill');$title=$window.FindName('Title');$user=$window.FindName('User');$percent=$window.FindName('Percent');$bar=$window.FindName('Bar');$usage=$window.FindName('Usage');$expiry=$window.FindName('Expiry');$updated=$window.FindName('Updated');$ringArc=$window.FindName('RingArc');$ringTitle=$window.FindName('RingTitle');$ringUser=$window.FindName('RingUser');$ringPercent=$window.FindName('RingPercent');$ringUsage=$window.FindName('RingUsage');$ringExpiry=$window.FindName('RingExpiry');$ringUpdated=$window.FindName('RingUpdated')
+$bg=$window.FindName('CardBackground');$detailView=$window.FindName('DetailView');$ringView=$window.FindName('RingView');$edgeView=$window.FindName('EdgeView');$edgePrimaryFill=$window.FindName('EdgePrimaryFill');$edgeSecondaryFill=$window.FindName('EdgeSecondaryFill');$title=$window.FindName('Title');$user=$window.FindName('User');$primaryLabel=$window.FindName('PrimaryLabel');$primaryBar=$window.FindName('PrimaryBar');$secondaryLabel=$window.FindName('SecondaryLabel');$secondaryBar=$window.FindName('SecondaryBar');$resetInfo=$window.FindName('ResetInfo');$resetCredits=$window.FindName('ResetCredits');$openUsageButton=$window.FindName('OpenUsageButton');$updated=$window.FindName('Updated');$ringTitle=$window.FindName('RingTitle');$ringUser=$window.FindName('RingUser');$ringPrimaryArc=$window.FindName('RingPrimaryArc');$primaryGaugeCanvas=$window.FindName('PrimaryGaugeCanvas');$primaryNeedle=$window.FindName('PrimaryNeedle');$ringPrimaryPercent=$window.FindName('RingPrimaryPercent');$ringPrimaryName=$window.FindName('RingPrimaryName');$ringPrimaryReset=$window.FindName('RingPrimaryReset');$ringSecondaryArc=$window.FindName('RingSecondaryArc');$secondaryGaugeCanvas=$window.FindName('SecondaryGaugeCanvas');$secondaryNeedle=$window.FindName('SecondaryNeedle');$ringSecondaryPercent=$window.FindName('RingSecondaryPercent');$ringSecondaryName=$window.FindName('RingSecondaryName');$ringSecondaryReset=$window.FindName('RingSecondaryReset');$ringUpdated=$window.FindName('RingUpdated');$ringResetButton=$window.FindName('RingResetButton')
 $title.Text='ChatGPT '+(T '5Ymp5L2Z')
 $ringTitle.Text='ChatGPT '+(T '5Ymp5L2Z')
+$openUsageButton.Content=T '6YeN572u'
+$ringResetButton.Content=T '6YeN572u'
 $area=[Windows.SystemParameters]::WorkArea;$window.Left=$area.Right-$window.Width-24;$window.Top=$area.Bottom-$window.Height-24
+
+function Add-GaugeTicks($canvas) {
+ for($i=0;$i -le 10;$i++){$angle=(-135+($i*27))*[Math]::PI/180;$line=New-Object Windows.Shapes.Line;$line.X1=38+[Math]::Cos($angle)*30;$line.Y1=38+[Math]::Sin($angle)*30;$line.X2=38+[Math]::Cos($angle)*35;$line.Y2=38+[Math]::Sin($angle)*35;$line.Stroke=[Windows.Media.Brushes]::White;$line.Opacity=0.75;$line.StrokeThickness=if($i%5 -eq 0){2}else{1};[void]$canvas.Children.Insert(0,$line)}
+}
+function Set-GaugeNeedle($needle,[int]$remaining,[string]$color) {$needle.Stroke=$color;$transform=New-Object Windows.Media.RotateTransform;$transform.Angle=-135+($remaining*2.7);$transform.CenterX=38;$transform.CenterY=38;$needle.RenderTransform=$transform}
+function Set-GaugeProgress($arc,$needle,[int]$remaining,[string]$color) {
+ $remaining=[Math]::Max(0,[Math]::Min(100,$remaining));$circle=36.65;$span=27.49;$dash=[Math]::Max(0.01,$span*$remaining/100);$gap=[Math]::Max(0.01,$circle-$dash)
+ $arc.Stroke=$color;$arc.StrokeDashArray=(New-Object Windows.Media.DoubleCollectionConverter).ConvertFromString(('{0:F3},{1:F3}' -f $dash,$gap));Set-GaugeNeedle $needle $remaining $color
+}
+Add-GaugeTicks $primaryGaugeCanvas;Add-GaugeTicks $secondaryGaugeCanvas
 
 function Apply-Background([string]$path){
  if($path -and (Test-Path -LiteralPath $path)){$img=New-Object Windows.Media.Imaging.BitmapImage;$img.BeginInit();$img.CacheOption='OnLoad';$img.UriSource=New-Object Uri $path;$img.EndInit();$brush=New-Object Windows.Media.ImageBrush $img;$brush.Stretch='UniformToFill';$bg.Background=$brush}
@@ -93,7 +122,7 @@ function Apply-Background([string]$path){
 function Apply-Opacity([int]$value){$bg.Opacity=$value/100.0;Save-Setting 'backgroundOpacity' $value}
 function Apply-FontColor([string]$value){
  try{$brush=(New-Object Windows.Media.BrushConverter).ConvertFromString($value)}catch{$brush=[Windows.Media.Brushes]::White}
- $title.Foreground=$brush;$user.Foreground=$brush;$usage.Foreground=$brush;$expiry.Foreground=$brush;$updated.Foreground=$brush;$ringTitle.Foreground=$brush;$ringUser.Foreground=$brush;$ringUsage.Foreground=$brush;$ringExpiry.Foreground=$brush;$ringUpdated.Foreground=$brush
+ $title.Foreground=$brush;$user.Foreground=$brush;$resetInfo.Foreground=$brush;$resetCredits.Foreground=$brush;$updated.Foreground=$brush;$ringTitle.Foreground=$brush;$ringUser.Foreground=$brush;$ringPrimaryName.Foreground=$brush;$ringPrimaryReset.Foreground=$brush;$ringSecondaryName.Foreground=$brush;$ringSecondaryReset.Foreground=$brush;$ringUpdated.Foreground=$brush
 }
 $cfg=Read-Config;$opacity=if($null -ne $cfg.backgroundOpacity){[int]$cfg.backgroundOpacity}else{90};$bg.Opacity=$opacity/100.0;Apply-Background ([string]$cfg.backgroundImage)
 $alwaysOnTop=if($null -ne $cfg.alwaysOnTop){[bool]$cfg.alwaysOnTop}else{$true};$window.Topmost=$alwaysOnTop
@@ -105,7 +134,7 @@ function Apply-DisplayStyle {
 }
 function Toggle-DisplayStyle {$script:displayStyle=if($script:displayStyle -eq 'ring'){'detail'}else{'ring'};Apply-DisplayStyle;Save-Setting 'displayStyle' $script:displayStyle}
 function Collapse-ToEdge([string]$side){
- $script:isEdgeHidden=$true;$script:temporaryExpanded=$false;$script:edgeSide=$side;$window.Width=14
+ $script:isEdgeHidden=$true;$script:temporaryExpanded=$false;$script:edgeSide=$side;$window.Width=24
  $work=[Windows.SystemParameters]::WorkArea;if($side -eq 'left'){$window.Left=$work.Left}else{$window.Left=$work.Right-$window.Width}
  Apply-DisplayStyle
 }
@@ -123,19 +152,32 @@ function Test-SnapToEdge {
 }
 Apply-DisplayStyle
 $script:hasUsageData=$false
-$percent.Text='-';$bar.Width=0;$usage.Text=(T '5Ymp5L2Z')+': -';$expiry.Text=(T '5Yiw5pyfL+mHjee9rg==')+': -';$updated.Text=(T '5pu05paw5pe26Ze0')+': -'
-$user.Text=(T '55So5oi3')+': -';$ringUser.Text=(T '55So5oi3')+': -';$ringPercent.Text='-';$ringUsage.Text=(T '5Ymp5L2Z')+': -';$ringExpiry.Text=(T '5Yiw5pyfL+mHjee9rg==')+': -';$ringUpdated.Text=(T '5pu05paw5pe26Ze0')+': -'
+$primaryLabel.Text=(T '55+t5ZGo5pyf')+': -';$primaryBar.Width=0;$secondaryLabel.Text=(T '6ZW/5ZGo5pyf')+': -';$secondaryBar.Width=0;$resetInfo.Text=(T '6YeN572u')+': -';$resetCredits.Text='-';$updated.Text=(T '5pu05paw5pe26Ze0')+': -'
+$user.Text=(T '55So5oi3')+': -';$ringUser.Text=(T '55So5oi3')+': -';$ringPrimaryPercent.Text='-';$ringPrimaryName.Text=(T '55+t5ZGo5pyf');$ringPrimaryReset.Text=(T '6YeN572u')+': -';$ringSecondaryPercent.Text='-';$ringSecondaryName.Text=(T '6ZW/5ZGo5pyf');$ringSecondaryReset.Text=(T '6YeN572u')+': -';$ringUpdated.Text=(T '5pu05paw5pe26Ze0')+': -'
 
 function Update-Widget {
- try{$u=Get-Usage;$remain=100-$u.used;$percent.Text="$remain%";$bar.Width=151*$remain/100
-  $color=if($remain -le 5){'#FF3737'}elseif($remain -le 20){'#FFD22D'}else{'#32EB87'};$percent.Foreground=$color;$bar.Background=$color
-  $usage.Text=(T '5Ymp5L2Z')+": $remain%    "+(T '5bey55So')+": $($u.used)%";$expiry.Text=(T '5Yiw5pyfL+mHjee9rg==')+': '+$u.expires.ToString('yyyy-MM-dd');$updated.Text=(T '5pu05paw5pe26Ze0')+': '+(Get-Date).ToString('HH:mm:ss')
+ try{$u=Get-Usage;$remain=$u.tightest.remaining
+  $primaryColor=if($u.primary.remaining -le 5){'#FF3737'}elseif($u.primary.remaining -le 20){'#FFD22D'}else{'#22D3EE'}
+  $primaryName=if($u.primary.minutes -lt 1440){$n=[int]($u.primary.minutes/60);$n.ToString()+(T '5bCP5pe2')}else{$n=[int]($u.primary.minutes/1440);$n.ToString()+(T '5aSp')}
+  $primaryLabel.Text="$primaryName  "+(T '5Ymp5L2Z')+": $($u.primary.remaining)%";$primaryLabel.Foreground=$primaryColor;$primaryBar.Width=151*$u.primary.remaining/100;$primaryBar.Background=$primaryColor
+  if($u.secondary){$secondaryColor=if($u.secondary.remaining -le 5){'#FF3737'}elseif($u.secondary.remaining -le 20){'#FFD22D'}else{'#32EB87'};$secondaryName=if($u.secondary.minutes -lt 1440){$n=[int]($u.secondary.minutes/60);$n.ToString()+(T '5bCP5pe2')}else{$n=[int]($u.secondary.minutes/1440);$n.ToString()+(T '5aSp')};$secondaryLabel.Text="$secondaryName  "+(T '5Ymp5L2Z')+": $($u.secondary.remaining)%";$secondaryLabel.Foreground=$secondaryColor;$secondaryBar.Width=151*$u.secondary.remaining/100;$secondaryBar.Background=$secondaryColor}else{$secondaryName=(T '6ZW/5ZGo5pyf');$secondaryLabel.Text=$secondaryName+': -';$secondaryBar.Width=0}
+  $reset1=if($u.primary.reset){$u.primary.reset.ToString('MM-dd HH:mm')}else{'-'};$reset2=if($u.secondary -and $u.secondary.reset){$u.secondary.reset.ToString('MM-dd HH:mm')}else{'-'}
+  $resetInfo.Text="$primaryName "+(T '6YeN572u')+": $reset1`n$secondaryName "+(T '6YeN572u')+": $reset2"
+  $resetCredits.Text="$($u.resetCredits) "+(T '5qyh6YeN572u5py65Lya')
+  $updated.Text=(T '5pu05paw5pe26Ze0')+': '+(Get-Date).ToString('HH:mm:ss')
   $user.Text=(T '55So5oi3')+': '+$u.username;$ringUser.Text=(T '55So5oi3')+': '+$u.username
-  $ringPercent.Text="$remain%";$ringPercent.Foreground=$color;$ringArc.Stroke=$color;$dash=51.05*$remain/100;$gap=[Math]::Max(0.01,51.05-$dash);$ringArc.StrokeDashArray=(New-Object Windows.Media.DoubleCollectionConverter).ConvertFromString(('{0:F2},{1:F2}' -f $dash,$gap))
-  $edgeFill.Height=150*$remain/100;$edgeFill.Background=$color
-  $ringUsage.Text=(T '5Ymp5L2Z')+": $remain%  "+(T '5bey55So')+": $($u.used)%";$ringExpiry.Text=(T '5Yiw5pyfL+mHjee9rg==')+': '+$u.expires.ToString('yyyy-MM-dd');$ringUpdated.Text=(T '5pu05paw5pe26Ze0')+': '+(Get-Date).ToString('HH:mm:ss')
+  $ringPrimaryPercent.Text="$($u.primary.remaining)%";$ringPrimaryPercent.Foreground=$primaryColor;$ringPrimaryName.Text=$primaryName;$ringPrimaryReset.Text=(T '6YeN572u')+"`n"+$reset1;Set-GaugeProgress $ringPrimaryArc $primaryNeedle $u.primary.remaining $primaryColor
+  if($u.secondary){$ringSecondaryPercent.Text="$($u.secondary.remaining)%";$ringSecondaryPercent.Foreground=$secondaryColor;$ringSecondaryName.Text=$secondaryName;$ringSecondaryReset.Text=(T '6YeN572u')+"`n"+$reset2;Set-GaugeProgress $ringSecondaryArc $secondaryNeedle $u.secondary.remaining $secondaryColor}else{$ringSecondaryPercent.Text='-';$ringSecondaryName.Text=(T '6ZW/5ZGo5pyf');$ringSecondaryReset.Text=(T '6YeN572u')+': -'}
+  $color=if($remain -le 5){'#FF3737'}elseif($remain -le 20){'#FFD22D'}else{'#32EB87'}
+  $edgePrimaryFill.Height=150*$u.primary.remaining/100;$edgePrimaryFill.Background=$primaryColor
+  if($u.secondary){$edgeSecondaryFill.Height=150*$u.secondary.remaining/100;$edgeSecondaryFill.Background=$secondaryColor}else{$edgeSecondaryFill.Height=0}
+  $ringUpdated.Text=(T '5pu05paw5pe26Ze0')+': '+(Get-Date).ToString('HH:mm:ss')
   $script:hasUsageData=$true;if($timer){$timer.Interval=[TimeSpan]::FromMinutes(1)}
- }catch{if(-not $script:hasUsageData -and $timer){$timer.Interval=[TimeSpan]::FromSeconds(10)}}
+ }catch{
+  $errorPath=Join-Path $appDir 'widget-error.log'
+  ("{0:yyyy-MM-dd HH:mm:ss} | {1}`r`n{2}" -f (Get-Date),$_.Exception.Message,$_.ScriptStackTrace)|Set-Content -LiteralPath $errorPath -Encoding UTF8
+  if(-not $script:hasUsageData -and $timer){$timer.Interval=[TimeSpan]::FromSeconds(10)}
+ }
 }
 
 $menu=New-Object Windows.Controls.ContextMenu
@@ -147,6 +189,8 @@ $refresh.Add_Click({Update-Widget});$top.Add_Click({$window.Topmost=$top.IsCheck
 $image.Add_Click({$d=New-Object Windows.Forms.OpenFileDialog;$d.Filter='Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif';if($d.ShowDialog()-eq'OK'){Save-Setting 'backgroundImage' $d.FileName;Apply-Background $d.FileName};$d.Dispose()})
 $clear.Add_Click({Save-Setting 'backgroundImage' '';Apply-Background ''})
 $fontColorItem.Add_Click({$d=New-Object Windows.Forms.ColorDialog;$d.FullOpen=$true;if($d.ShowDialog()-eq'OK'){$hex='#{0:X2}{1:X2}{2:X2}' -f $d.Color.R,$d.Color.G,$d.Color.B;Save-Setting 'fontColor' $hex;Apply-FontColor $hex};$d.Dispose()})
+$openUsageButton.Add_Click({Start-Process 'https://chatgpt.com/codex/settings/usage'})
+$ringResetButton.Add_Click({Start-Process 'https://chatgpt.com/codex/settings/usage'})
 $edgeReturnTimer=New-Object Windows.Threading.DispatcherTimer;$edgeReturnTimer.Interval=[TimeSpan]::FromSeconds(5);$edgeReturnTimer.Add_Tick({$edgeReturnTimer.Stop();if(-not $script:isEdgeHidden){Collapse-ToEdge $script:edgeSide}})
 $window.ContextMenu=$menu;$window.Add_MouseLeftButtonDown({
  $wasTemporary=$script:temporaryExpanded;if($wasTemporary){$edgeReturnTimer.Stop()}
