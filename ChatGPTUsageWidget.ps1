@@ -90,15 +90,15 @@ function Get-Usage {
   </Grid>
   <Grid Name="EdgeView" Margin="2,10" Visibility="Collapsed">
    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="2"/><ColumnDefinition/></Grid.ColumnDefinitions>
-   <Border Grid.Column="0" Background="#59606E" CornerRadius="3"><Border Name="EdgePrimaryFill" Background="#22D3EE" CornerRadius="3" VerticalAlignment="Bottom"/></Border>
-   <Border Grid.Column="2" Background="#59606E" CornerRadius="3"><Border Name="EdgeSecondaryFill" Background="#32EB87" CornerRadius="3" VerticalAlignment="Bottom"/></Border>
+   <Grid Grid.Column="0"><Border Background="#59606E" CornerRadius="3"><Border Name="EdgePrimaryFill" Background="#22D3EE" CornerRadius="3" VerticalAlignment="Bottom"/></Border><Canvas IsHitTestVisible="False"><Border Name="EdgePrimaryBubble" Width="12" Height="12" Canvas.Left="0" Background="Transparent" BorderThickness="0"><TextBlock Name="EdgePrimaryPercent" FontFamily="Microsoft YaHei UI" FontSize="6.5" FontWeight="Bold" Foreground="White" TextAlignment="Center" VerticalAlignment="Center"/></Border></Canvas></Grid>
+   <Grid Grid.Column="2"><Border Background="#59606E" CornerRadius="3"><Border Name="EdgeSecondaryFill" Background="#32EB87" CornerRadius="3" VerticalAlignment="Bottom"/></Border><Canvas IsHitTestVisible="False"><Border Name="EdgeSecondaryBubble" Width="12" Height="12" Canvas.Left="0" Background="Transparent" BorderThickness="0"><TextBlock Name="EdgeSecondaryPercent" FontFamily="Microsoft YaHei UI" FontSize="6.5" FontWeight="Bold" Foreground="White" TextAlignment="Center" VerticalAlignment="Center"/></Border></Canvas></Grid>
   </Grid>
  </Grid>
 </Window>
 '@
 $reader=New-Object Xml.XmlNodeReader $xaml
 $window=[Windows.Markup.XamlReader]::Load($reader)
-$bg=$window.FindName('CardBackground');$detailView=$window.FindName('DetailView');$ringView=$window.FindName('RingView');$edgeView=$window.FindName('EdgeView');$edgePrimaryFill=$window.FindName('EdgePrimaryFill');$edgeSecondaryFill=$window.FindName('EdgeSecondaryFill');$title=$window.FindName('Title');$user=$window.FindName('User');$primaryLabel=$window.FindName('PrimaryLabel');$primaryBar=$window.FindName('PrimaryBar');$secondaryLabel=$window.FindName('SecondaryLabel');$secondaryBar=$window.FindName('SecondaryBar');$resetInfo=$window.FindName('ResetInfo');$resetCredits=$window.FindName('ResetCredits');$openUsageButton=$window.FindName('OpenUsageButton');$updated=$window.FindName('Updated');$ringTitle=$window.FindName('RingTitle');$ringUser=$window.FindName('RingUser');$ringPrimaryArc=$window.FindName('RingPrimaryArc');$primaryGaugeCanvas=$window.FindName('PrimaryGaugeCanvas');$primaryNeedle=$window.FindName('PrimaryNeedle');$ringPrimaryPercent=$window.FindName('RingPrimaryPercent');$ringPrimaryName=$window.FindName('RingPrimaryName');$ringPrimaryReset=$window.FindName('RingPrimaryReset');$ringSecondaryArc=$window.FindName('RingSecondaryArc');$secondaryGaugeCanvas=$window.FindName('SecondaryGaugeCanvas');$secondaryNeedle=$window.FindName('SecondaryNeedle');$ringSecondaryPercent=$window.FindName('RingSecondaryPercent');$ringSecondaryName=$window.FindName('RingSecondaryName');$ringSecondaryReset=$window.FindName('RingSecondaryReset');$ringUpdated=$window.FindName('RingUpdated');$ringResetButton=$window.FindName('RingResetButton')
+$bg=$window.FindName('CardBackground');$detailView=$window.FindName('DetailView');$ringView=$window.FindName('RingView');$edgeView=$window.FindName('EdgeView');$edgePrimaryFill=$window.FindName('EdgePrimaryFill');$edgeSecondaryFill=$window.FindName('EdgeSecondaryFill');$edgePrimaryBubble=$window.FindName('EdgePrimaryBubble');$edgeSecondaryBubble=$window.FindName('EdgeSecondaryBubble');$edgePrimaryPercent=$window.FindName('EdgePrimaryPercent');$edgeSecondaryPercent=$window.FindName('EdgeSecondaryPercent');$title=$window.FindName('Title');$user=$window.FindName('User');$primaryLabel=$window.FindName('PrimaryLabel');$primaryBar=$window.FindName('PrimaryBar');$secondaryLabel=$window.FindName('SecondaryLabel');$secondaryBar=$window.FindName('SecondaryBar');$resetInfo=$window.FindName('ResetInfo');$resetCredits=$window.FindName('ResetCredits');$openUsageButton=$window.FindName('OpenUsageButton');$updated=$window.FindName('Updated');$ringTitle=$window.FindName('RingTitle');$ringUser=$window.FindName('RingUser');$ringPrimaryArc=$window.FindName('RingPrimaryArc');$primaryGaugeCanvas=$window.FindName('PrimaryGaugeCanvas');$primaryNeedle=$window.FindName('PrimaryNeedle');$ringPrimaryPercent=$window.FindName('RingPrimaryPercent');$ringPrimaryName=$window.FindName('RingPrimaryName');$ringPrimaryReset=$window.FindName('RingPrimaryReset');$ringSecondaryArc=$window.FindName('RingSecondaryArc');$secondaryGaugeCanvas=$window.FindName('SecondaryGaugeCanvas');$secondaryNeedle=$window.FindName('SecondaryNeedle');$ringSecondaryPercent=$window.FindName('RingSecondaryPercent');$ringSecondaryName=$window.FindName('RingSecondaryName');$ringSecondaryReset=$window.FindName('RingSecondaryReset');$ringUpdated=$window.FindName('RingUpdated');$ringResetButton=$window.FindName('RingResetButton')
 $title.Text='ChatGPT '+(T '5Ymp5L2Z')
 $ringTitle.Text='ChatGPT '+(T '5Ymp5L2Z')
 $openUsageButton.Content=T '6YeN572u'
@@ -112,6 +112,11 @@ function Set-GaugeNeedle($needle,[int]$remaining,[string]$color) {$needle.Stroke
 function Set-GaugeProgress($arc,$needle,[int]$remaining,[string]$color) {
  $remaining=[Math]::Max(0,[Math]::Min(100,$remaining));$circle=36.65;$span=27.49;$dash=[Math]::Max(0.01,$span*$remaining/100);$gap=[Math]::Max(0.01,$circle-$dash)
  $arc.Stroke=$color;$arc.StrokeDashArray=(New-Object Windows.Media.DoubleCollectionConverter).ConvertFromString(('{0:F3},{1:F3}' -f $dash,$gap));Set-GaugeNeedle $needle $remaining $color
+}
+function Update-EdgeBar($fill,$bubble,$label,$remaining,[string]$color) {
+ $trackHeight=170.0
+ if($null -eq $remaining){$fill.Height=0;$label.Text='-';$top=158.0}else{$value=[Math]::Max(0,[Math]::Min(100,[int]$remaining));$fill.Height=$trackHeight*$value/100;$fill.Background=$color;$label.Text="$value";$top=$trackHeight-$fill.Height+1}
+ $top=[Math]::Max(1,[Math]::Min(158,$top));[Windows.Controls.Canvas]::SetTop($bubble,[double]$top)
 }
 Add-GaugeTicks $primaryGaugeCanvas;Add-GaugeTicks $secondaryGaugeCanvas
 
@@ -134,7 +139,7 @@ function Apply-DisplayStyle {
 }
 function Toggle-DisplayStyle {$script:displayStyle=if($script:displayStyle -eq 'ring'){'detail'}else{'ring'};Apply-DisplayStyle;Save-Setting 'displayStyle' $script:displayStyle}
 function Collapse-ToEdge([string]$side){
- $script:isEdgeHidden=$true;$script:temporaryExpanded=$false;$script:edgeSide=$side;$window.Width=24
+ $script:isEdgeHidden=$true;$script:temporaryExpanded=$false;$script:edgeSide=$side;$window.Width=30
  $work=[Windows.SystemParameters]::WorkArea;if($side -eq 'left'){$window.Left=$work.Left}else{$window.Left=$work.Right-$window.Width}
  Apply-DisplayStyle
 }
@@ -152,7 +157,7 @@ function Test-SnapToEdge {
 }
 Apply-DisplayStyle
 $script:hasUsageData=$false
-$primaryLabel.Text=(T '55+t5ZGo5pyf')+': -';$primaryBar.Width=0;$secondaryLabel.Text=(T '6ZW/5ZGo5pyf')+': -';$secondaryBar.Width=0;$resetInfo.Text=(T '6YeN572u')+': -';$resetCredits.Text='-';$updated.Text=(T '5pu05paw5pe26Ze0')+': -'
+$primaryLabel.Text=(T '55+t5ZGo5pyf')+': -';$primaryBar.Width=0;$secondaryLabel.Text=(T '6ZW/5ZGo5pyf')+': -';$secondaryBar.Width=0;$resetInfo.Text=(T '6YeN572u')+': -';$resetCredits.Text='-';$updated.Text=(T '5pu05paw5pe26Ze0')+': -';Update-EdgeBar $edgePrimaryFill $edgePrimaryBubble $edgePrimaryPercent $null '#22D3EE';Update-EdgeBar $edgeSecondaryFill $edgeSecondaryBubble $edgeSecondaryPercent $null '#32EB87'
 $user.Text=(T '55So5oi3')+': -';$ringUser.Text=(T '55So5oi3')+': -';$ringPrimaryPercent.Text='-';$ringPrimaryName.Text=(T '55+t5ZGo5pyf');$ringPrimaryReset.Text=(T '6YeN572u')+': -';$ringSecondaryPercent.Text='-';$ringSecondaryName.Text=(T '6ZW/5ZGo5pyf');$ringSecondaryReset.Text=(T '6YeN572u')+': -';$ringUpdated.Text=(T '5pu05paw5pe26Ze0')+': -'
 
 function Update-Widget {
@@ -169,8 +174,8 @@ function Update-Widget {
   $ringPrimaryPercent.Text="$($u.primary.remaining)%";$ringPrimaryPercent.Foreground=$primaryColor;$ringPrimaryName.Text=$primaryName;$ringPrimaryReset.Text=(T '6YeN572u')+"`n"+$reset1;Set-GaugeProgress $ringPrimaryArc $primaryNeedle $u.primary.remaining $primaryColor
   if($u.secondary){$ringSecondaryPercent.Text="$($u.secondary.remaining)%";$ringSecondaryPercent.Foreground=$secondaryColor;$ringSecondaryName.Text=$secondaryName;$ringSecondaryReset.Text=(T '6YeN572u')+"`n"+$reset2;Set-GaugeProgress $ringSecondaryArc $secondaryNeedle $u.secondary.remaining $secondaryColor}else{$ringSecondaryPercent.Text='-';$ringSecondaryName.Text=(T '6ZW/5ZGo5pyf');$ringSecondaryReset.Text=(T '6YeN572u')+': -'}
   $color=if($remain -le 5){'#FF3737'}elseif($remain -le 20){'#FFD22D'}else{'#32EB87'}
-  $edgePrimaryFill.Height=170*$u.primary.remaining/100;$edgePrimaryFill.Background=$primaryColor
-  if($u.secondary){$edgeSecondaryFill.Height=170*$u.secondary.remaining/100;$edgeSecondaryFill.Background=$secondaryColor}else{$edgeSecondaryFill.Height=0}
+  Update-EdgeBar $edgePrimaryFill $edgePrimaryBubble $edgePrimaryPercent $u.primary.remaining $primaryColor
+  if($u.secondary){Update-EdgeBar $edgeSecondaryFill $edgeSecondaryBubble $edgeSecondaryPercent $u.secondary.remaining $secondaryColor}else{Update-EdgeBar $edgeSecondaryFill $edgeSecondaryBubble $edgeSecondaryPercent $null '#32EB87'}
   $ringUpdated.Text=(T '5pu05paw5pe26Ze0')+': '+(Get-Date).ToString('HH:mm:ss')
   $script:hasUsageData=$true;if($timer){$timer.Interval=[TimeSpan]::FromMinutes(1)}
  }catch{
