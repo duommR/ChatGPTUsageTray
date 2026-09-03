@@ -6,7 +6,11 @@
   "expiresAt": "2026-08-29T00:00:00+08:00",
   "monthlyBudget": 20,
   "fontColor": "#FFFFFF",
+  "fontColorCustomized": false,
   "backgroundOpacity": 90,
   "alwaysOnTop": true,
+  "appearanceStyle": "default",
+  "colorMode": "system",
+  "cardIndex": 0,
   "displayStyle": "detail"
 }
